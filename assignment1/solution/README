@@ -1,0 +1,6 @@
+To compile, type "make".
+It creates two executables "create" and "change"
+Open two terminal windows.
+Run create in one window.
+Run change in another window before "create" terminates.
+Try to figure out what these programs do.
