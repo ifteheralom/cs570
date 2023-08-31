@@ -7,9 +7,10 @@
 #define SEMA_KEY   ((key_t)(44456)) /* change this to last four digits of SID */
 
 struct StudentInfo{
-  char fName[20];
-  char lName[20];
-  char telNumber[15];
+  char Name[20];
+  long Id;
+  char Address[30];
+  long Tel;
   char whoModified[10];
 };
 

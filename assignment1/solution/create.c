@@ -38,9 +38,10 @@ int main()
   }
   
 /* store data in the shared memory segment */  
-  strcpy(infoptr->fName,"Joe");
-  strcpy(infoptr->lName, "Smith");
-  strcpy(infoptr->telNumber, "606-111-2222");
+  strcpy(infoptr->Name,"Joe");
+  strcpy(infoptr->Id, 123456);
+  strcpy(infoptr->Address, "Simpson Ave, 40504");
+  strcpy(infoptr->Tel, 8591231234);
   strcpy(infoptr->whoModified, " ");
 
  
