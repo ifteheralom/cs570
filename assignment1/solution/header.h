@@ -7,10 +7,10 @@
 #define SEMA_KEY   ((key_t)(44456)) /* change this to last four digits of SID */
 
 struct StudentInfo{
-  char fName[20];
-  char lName[20];
-  char telNumber[15];
-  char whoModified[10];
+  char Name[20];
+  long StudentID;
+  char Address[50];
+  long TelephoneNumber;
 };
 
 void Wait(int semaph, int n);

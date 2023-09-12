@@ -12,6 +12,9 @@
 
 int main()
 {
+  FILE *in_file  = fopen("name_of_file", "r"); // read only
+  FILE *out_file = fopen("name_of_file", "w"); // write only
+
   int i,id;
   struct StudentInfo *infoptr;
   int sema_set;
@@ -46,19 +49,42 @@ int main()
  
 /*print the contents of the shared memory segment 10 times*/ 
 
-  for(i=0;i<10;i++)
-    {
-      printf("the value of sema_set=%d\n", sema_set);
-      Wait(sema_set,1); 
-      printf("Name: %s %s\nPhone Number: %s\n",
-	     infoptr->fName,infoptr->lName,infoptr->telNumber);
-      printf("Last modified by: %s\n \n ", infoptr->whoModified);
-      sleep(2);
-      Signal(sema_set,1);
+  StudentInfo *tempInfo;
+
+  char Name[20];
+  long StudentID;
+  char Address[50];
+  long TelephoneNumber;
+
+  for(i=0;i<10;i++) {
+      // printf("the value of sema_set=%d\n", sema_set);
+      // Wait(sema_set,1); 
+      // printf("Name: %s %s\nPhone Number: %s\n",
+	    //  infoptr->fName,infoptr->lName,infoptr->telNumber);
+      // printf("Last modified by: %s\n \n ", infoptr->whoModified);
+      // sleep(2);
+      // Signal(sema_set,1);
+      
+      scanf("%[^\n]s%ld%[^\n]s%ld", 
+        tempInfo->Name,
+        tempInfo->StudentID,
+        tempInfo->Address,
+        tempInfo->TelephoneNumber
+      )
+
+      printf("%s\n%ld\n%s\n%ld", 
+        tempInfo->Name,
+        tempInfo->StudentID,
+        tempInfo->Address,
+        tempInfo->TelephoneNumber
+      )
   }
 
   shmdt((char  *)infoptr); /* detach the shared memory segment */
   shmctl(id, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
   semctl(sema_set,0,IPC_RMID); /*Remove the semaphore set */
+
+  fclose(in_file);
+  fclose(out_file);
   exit(0);
 }
