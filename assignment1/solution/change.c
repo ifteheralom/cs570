@@ -49,10 +49,10 @@ int main(int argc, char* argv[])
      into the shared memory segment */
   Wait(sema_set,1);
   printf("the value of sema_set=%d\n", sema_set); 
-  strcpy(infoptr->fName,argv[1]);
+  strcpy(infoptr->Name,argv[1]);
   strcpy(infoptr->lName, argv[2]);
   sleep(10);
-  strcpy(infoptr->telNumber, argv[3]);
+  strcpy(infoptr->telephoneNumber, argv[3]);
   strcpy(infoptr->whoModified, (getpwuid(getuid()))->pw_name);
   Signal(sema_set,1); 
   exit(0);
