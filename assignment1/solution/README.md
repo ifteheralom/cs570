@@ -67,7 +67,7 @@ make reset all
 
 4. Run each executable in order to view or modify the records
 
-5. Run `./save` once all changes are made and wish to terminate the program.
+5. Run `./clean` once all changes are made and wish to terminate the program.
 
   
 
