@@ -14,7 +14,7 @@ int main() {
     int id, id2;
     int sema_set;
 
-    FILE* ptr = fopen("sample_input_file_save.txt", "r+");
+    FILE* ptr = fopen("sample_input_file.txt", "r+");
 
     struct StudentInfo *infoptr = NULL;
     struct StudentInfo *infoptrStart = NULL;
