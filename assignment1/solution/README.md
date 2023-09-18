@@ -47,12 +47,12 @@ cd assignment1/solution/
 
 ```sh
 
-make clean all
+make reset all
 
 ```
 
 4. Followinf executables will be created:
-	* load, print, query, change, save
+	* load, print, query, change, clean
 * **load:**  Loads the student information from file to shared memory.
 * **print:**  Prints the current information available on shared memory.
 * **query:** Query a record in shared memory using command: `./query <studentID>`
@@ -63,7 +63,7 @@ make clean all
 		* Update Telephone: ` ./change 1 ABCD <studentID> 3 <New Telephone>`
 	* **Delete:** Delete a student record. `./change 2 ABCD <studentID>`
 	* **Add:** Add a new student record. `./change 3 ABCD <9-digit-studentID> <Name> <Address> <Telephone>`. Pls note, for simplicity of implementation, I did not consider spaces. So *Name* and *Address* must be one word only. 
-* **save:** Saves the current state of shared memory to a file and dumps the shared memory space and semaphores.
+* **clean:** Saves the current state of shared memory to a file and dumps the shared memory space and semaphores.
 
 4. Run each executable in order to view or modify the records
 
