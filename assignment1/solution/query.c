@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
     printf("\n\n-----***************-------\n-----SHM QUERY  BEGIN------\n-----***************------\n\n");
     infoptr = infoptrStart + 1;
     bool matchFound = false;
+    sleep(5);
     for(int i=0; i<=50; i++) {
         Wait(sema_set, 1); 
         readPointer->readCount = readPointer->readCount + 1;
@@ -72,7 +73,6 @@ int main(int argc, char* argv[]) {
             Signal(sema_set,1);
             break;
         }       
-        sleep(0);
         Signal(sema_set,1);
         infoptr++;
     }

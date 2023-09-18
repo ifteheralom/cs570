@@ -196,6 +196,7 @@ int main(int argc, char* argv[])
     Wait(sema_set,1);
     bool result = modify_info(argv[3], atoi(argv[4]), argv[5], infoptr);
     infoptr = infoptrStart + 1;
+    sleep(5);
     Signal(sema_set,1); 
 
     if (result) {
@@ -210,6 +211,7 @@ int main(int argc, char* argv[])
     Wait(sema_set,1);
     bool result = delete_info(argv[3], infoptr);
     infoptr = infoptrStart + 1;
+    sleep(5);
     Signal(sema_set,1); 
 
     if (result) {
@@ -224,6 +226,7 @@ int main(int argc, char* argv[])
     Wait(sema_set,1);
     bool result = add_info(argv[3], argv[4], argv[5], argv[6], infoptr);
     infoptr = infoptrStart + 1;
+    sleep(5);
     Signal(sema_set,1); 
 
     if (result) {
