@@ -19,8 +19,8 @@ int main() {
     struct ReadCounter *readPointer = NULL;
 
     /* get shared memory to store data*/
-    id = shmget(KEY, SEG_STD_INFO_SIZE, IPC_CREAT|0666);
-    id2 = shmget(KEY, SEG_READ_SIZE, IPC_CREAT|0666);
+    id = shmget(KEY, SEG_STD_INFO_SIZE, 0);
+    id2 = shmget(KEY, SEG_READ_SIZE, 0);
     if (id < 0 || id2 < 0) {
         perror("create: shmget failed");
         exit(1);
@@ -45,12 +45,14 @@ int main() {
     for(int i=0; i<=50; i++) {
         Wait(sema_set, 1); 
         readPointer->readCount = 0;
-        printf("%d: %s%s%s%s \n", i, 
+        if (strcmp(infoptr->StudentId, "") != 0) {
+            printf("%d: %s%s%s%s \n", i, 
             infoptr->Name,
             infoptr->StudentId,
             infoptr->Address,
             infoptr->telephoneNumber
         );
+        }
         
         sleep(0);
         Signal(sema_set,1);     
@@ -59,12 +61,12 @@ int main() {
     infoptr = infoptrStart + 1;
     printf("\n\n-----***************------\n-----SHM  PRINT  END------\n-----***************------\n\n");
 
-    shmdt((char  *)infoptr); /* detach the shared memory segment */
-    shmdt((char  *)readPointer); /* detach the shared memory segment */
+    // shmdt((char  *)infoptrStart); /* detach the shared memory segment */
+    // shmdt((char  *)readPointer); /* detach the shared memory segment */
     
-    shmctl(id, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
-    shmctl(id2, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
+    // shmctl(id, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
+    // shmctl(id2, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
     
-    semctl(sema_set, 0, IPC_RMID); /*Remove the semaphore set */
+    // semctl(sema_set, 0, IPC_RMID); /*Remove the semaphore set */
     exit(0);
 }

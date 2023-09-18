@@ -1,7 +1,9 @@
 
 
-all: load print query create change
+all: save load print query create change
 
+save: save.c header.h
+	gcc -Wall -o save save.c header.c
 load: load.c header.h
 	gcc -Wall -o load load.c header.c
 print: print.c header.h
@@ -13,4 +15,4 @@ create: create.c header.h
 change: change.c header.h
 	gcc -Wall -o change change.c header.c
 clean:
-	rm -f create  change  *~ core
+	rm -f save load print query create  change  *~ core

@@ -1,6 +1,6 @@
 
 /* header.h */
-#define KEY  ((key_t)(98979)) /*change it to last five digits of your SID*/
+#define KEY  ((key_t)(12970)) /*change it to last five digits of your SID*/
 #define SEGSIZE sizeof(struct StudentInfo)
 #define SEG_STD_INFO_SIZE 55*(sizeof(struct StudentInfo))
 #define SEG_READ_SIZE sizeof(struct ReadCounter)

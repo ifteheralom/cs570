@@ -14,7 +14,7 @@ int main() {
     int id, id2;
     int sema_set;
 
-    FILE* ptr = fopen("sample_input_file.txt", "r+");
+    FILE* ptr = fopen("sample_input_file_save.txt", "r+");
 
     struct StudentInfo *infoptr = NULL;
     struct StudentInfo *infoptrStart = NULL;
@@ -56,25 +56,29 @@ int main() {
             printf("EOF \n");
             break;  
         }
-        strcpy(infoptr->Name, buf);
+        if (buf[0] != '\n') 
+            strcpy(infoptr->Name, buf);
 
         if (fgets(buf, 80, ptr) == NULL) {
             printf("EOF \n");
             break;  
         }
-        strcpy(infoptr->StudentId, buf);
+        if (buf[0] != '\n') 
+            strcpy(infoptr->StudentId, buf);
 
         if (fgets(buf, 80, ptr) == NULL) {
             printf("EOF \n");
             break;  
         }
-        strcpy(infoptr->Address, buf);
+        if (buf[0] != '\n') 
+            strcpy(infoptr->Address, buf);
 
         if (fgets(buf, 80, ptr) == NULL) {
             printf("EOF \n");
             break;  
         }
-        strcpy(infoptr->telephoneNumber, buf);
+        if (buf[0] != '\n') 
+            strcpy(infoptr->telephoneNumber, buf);
 
         printf("%d: %s%s%s%s \n", i, 
             infoptr->Name,
@@ -106,14 +110,14 @@ int main() {
 
     fclose(ptr);
 
-    sleep(10);
+    // sleep(20);
     
-    shmdt((char  *)infoptr); /* detach the shared memory segment */
-    shmdt((char  *)readPointer); /* detach the shared memory segment */
+    // shmdt((char  *)infoptrStart); /* detach the shared memory segment */
+    // shmdt((char  *)readPointer); /* detach the shared memory segment */
     
-    shmctl(id, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
-    shmctl(id2, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
+    // shmctl(id, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
+    // shmctl(id2, IPC_RMID,(struct shmid_ds *)0); /* destroy the shared memory segment*/
     
-    semctl(sema_set, 0, IPC_RMID); /*Remove the semaphore set */
+    // semctl(sema_set, 0, IPC_RMID); /*Remove the semaphore set */
     exit(0);
 }
