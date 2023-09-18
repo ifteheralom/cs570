@@ -1,29 +1,9 @@
-To compile, type "make".
-It creates two executables "create" and "change"
-Open two terminal windows.
-Run create in one window.
-Run change in another window before "create" terminates.
-Try to figure out what these programs do.
-
 <a  name="readme-top"></a>
-
-  
-  
-  
-
 <!-- PROJECT LOGO -->
-
 <br  />
-
 <div  align="center">
-
 <h3  align="center">CS 570: Modern Operating Syetems</h3>
-
-  
-
 </div>
-
-  
 
 <!-- GETTING STARTED -->
 
