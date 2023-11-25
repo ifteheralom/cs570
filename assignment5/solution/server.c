@@ -981,3 +981,13 @@ close_output * close_file_1_svc(close_input *inp, struct svc_req *rqstp)
 
 	return &result;
 }
+ 
+seek_output *
+seek_position_1_svc(seek_input *argp, struct svc_req *rqstp)
+{
+	static seek_output  result;
+
+
+	return &result;
+}
+
