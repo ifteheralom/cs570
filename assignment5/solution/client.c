@@ -16,6 +16,15 @@
 #include "ssnfs.h"
 
 CLIENT *clnt;
+char *filename;
+char *username;
+
+int Open(char *filename_to_open);
+void Read(int fd, char buffer[100], int numbytes);
+void Write(int fd, char *buffer, int numbytes);
+void List();
+void Delete(char *arg1);
+void Close(int fd);
 
 void
 ssnfsprog_1(char *host) {
@@ -33,7 +42,7 @@ Open(char *filename_to_open) {
 	open_output  *result_1;
 	open_input  open_file_1_arg;
   	
-	strcpy(open_file_1_arg.user_name, (getpwuid(getuid()))->pw_name);
+	strcpy(open_file_1_arg.user_name, username);
   	strcpy(open_file_1_arg.file_name,filename_to_open);
   	
 	result_1 = open_file_1(&open_file_1_arg, clnt);
@@ -41,9 +50,105 @@ Open(char *filename_to_open) {
 		clnt_perror (clnt, "call failed");
 	}
 	
-	printf (" File name is %s\n", (*result_1).out_msg.out_msg_val);
-	
+	// printf("OPEN -> DONE\n");
+	printf(" File name is %s\n", (*result_1).out_msg.out_msg_val);
+		
 	return ( (*result_1).fd);
+}
+
+void 
+Read(int fd, char buffer[100], int numbytes) { 
+	read_input in;
+  	read_output *outp;
+
+ 	strcpy(in.user_name, username); 
+  	
+	in.fd= fd;
+  	in.numbytes = numbytes; 
+  	
+	outp = read_file_1(&in, clnt); 
+  	
+	memset(buffer, 0, (outp)->out_msg.out_msg_len + 1);
+  	strncpy(buffer, (outp)->out_msg.out_msg_val, (outp)->out_msg.out_msg_len + 1);
+	
+	// printf("READ -> DONE\n");
+	// printf("%s\n",buffer);
+}
+
+void 
+Write(int fd, char *buffer, int numbytes) {
+	char *output;
+	write_input in;
+	write_output *outp;
+	
+	strcpy(in.user_name, username); 
+	
+	in.fd=fd; 
+	in.numbytes = numbytes; 
+	in.buffer.buffer_val=strdup(buffer);
+	in.buffer.buffer_len = strlen(buffer);
+	
+	outp = write_file_1(&in, clnt); 
+	
+	output = malloc((outp)->out_msg.out_msg_len + 1);
+	memset(output, 0, (outp)->out_msg.out_msg_len + 1);
+	strncpy(output, (outp)->out_msg.out_msg_val, (outp)->out_msg.out_msg_len + 1);
+	
+	printf("%s\n",output);
+}
+
+void 
+List() {
+	char *output;
+	list_input in; 
+	list_output *outp;
+
+	strcpy(in.user_name, username); 
+
+	outp = list_files_1(&in, clnt); 
+
+	output = malloc((outp)->out_msg.out_msg_len + 1);
+	memset(output, 0, (outp)->out_msg.out_msg_len + 1);
+	strncpy(output, (outp)->out_msg.out_msg_val, (outp)->out_msg.out_msg_len + 1);
+
+	printf("%s\n", output);
+}
+
+void 
+Delete(char *arg1) { 
+	char *output;
+	delete_output *outp;
+	delete_input in; 
+
+	if (arg1) 
+	{
+		strcpy(in.user_name, username); 
+		strcpy(in.file_name, arg1); 
+		outp = delete_file_1(&in, clnt); 
+	}
+
+	output = malloc((outp)->out_msg.out_msg_len + 1);
+	memset(output, 0, (outp)->out_msg.out_msg_len + 1);
+	strncpy(output, (outp)->out_msg.out_msg_val, (outp)->out_msg.out_msg_len + 1);
+	
+	printf("%s\n", output);
+} 
+
+void 
+Close(int fd) {
+	char *output;
+	close_input in;
+	close_output *outp;
+	
+	in.fd=fd;
+	
+	outp=close_file_1(&in,clnt);
+	
+	output = malloc((outp)->out_msg.out_msg_len + 1);
+	memset(output,0,(outp)->out_msg.out_msg_len + 1);
+	strncpy(output,(outp)->out_msg.out_msg_val,(outp)->out_msg.out_msg_len + 1);
+	
+	printf("%s\n",output);
 }
 
 /*
@@ -91,8 +196,7 @@ Open(char *filename_to_open) {
 */
 
 int
-main (int argc, char *argv[])
-{
+main (int argc, char *argv[]) {
 	char *host;
 
 	if (argc < 2) {
@@ -101,30 +205,36 @@ main (int argc, char *argv[])
 	}
 	host = argv[1];
 	ssnfsprog_1 (host);
+
+	username = getpwuid(geteuid())->pw_name;
+	
 	int fd;
 	fd=Open("MyFile");
 	printf("File descripter retuned is %d \n",fd);
-	/*
-int i,j;
-int fd1,fd2;
-char buffer[100];
-fd1=Open("File1"); // opens the file "File1"
-for (i=0; i< 20;i++){
-  Write(fd1,  "This is a test program for cs570 assignment 4", 15);
-}
-Close(fd1);
-fd2=Open("File1");
-for (j=0; j< 20;j++){
-    Read(fd2, buffer, 10);  
-    printf("%s\n",buffer);
-}
-Seek (fd2,40);
-Read(fd2, buffer, 20);
-printf("%s\n",buffer);
-Close(fd2);
-Delete("File1");
-List();
-	 */
 	
-exit (0);
+	int i,j;
+	int fd1,fd2;
+	char buffer[100];
+	
+	fd1=Open("File1"); // opens the file "File1"
+	for (i=0; i< 20;i++){
+		Write(fd1,  "This is a test program for cs570 assignment 4", 15);
+	}
+	Close(fd1);
+	
+	fd2=Open("File1");
+	for (j=0; j< 20;j++){
+		Read(fd2, buffer, 10);  
+		printf("%s\n",buffer);
+	}
+	
+	// Seek (fd2,40);
+	// Read(fd2, buffer, 20);
+	// printf("%s\n",buffer);
+	
+	Close(fd2);
+	Delete("File1");
+	List();
+
+	exit (0);
 }
