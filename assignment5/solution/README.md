@@ -48,7 +48,7 @@ git clone https://github.com/ifteheralom/cs570.git
 
 ```sh
 
-cd assignment1/solution/
+cd assignment5/solution/
 
 ```
 
@@ -56,10 +56,24 @@ cd assignment1/solution/
 
 ```sh
 
-make reset all
+make
 
 ```
-  
+4. Run Server on one terminal
+
+```sh
+
+./server
+
+```
+4. On another terminal window, run client
+
+```sh
+
+./client
+
+```
+ 
 
 <!-- CONTACT -->
 
