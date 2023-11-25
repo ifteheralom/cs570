@@ -10,7 +10,7 @@
 <!-- GETTING STARTED -->
 ## [Assignment 1](https://github.com/ifteheralom/cs570/tree/main/assignment1/solution)
 
-~~## [Assignment 2]()~~
+## [Assignment 5](https://github.com/ifteheralom/cs570/tree/main/assignment5/solution)
 
   
 <!-- CONTACT -->
