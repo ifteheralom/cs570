@@ -7,7 +7,7 @@
 
 <!-- GETTING STARTED -->
 
-## Assignment 1
+## Assignment 5
 
   
 
@@ -21,8 +21,17 @@
 
 ### System calls:
 
-* shmget, shmctl, shmat, shmdt, semget, semctl, semop, etc
+* Open_file: Opens the file with the given name in the user’s directory and returns a file descriptor (a positive integer) to the client. The file descriptor is used in subsequent reads and writes.
 
+* Read_file: It reads the file by taking the file descriptor and the number of bytes to be read as arguments. The contents that are read are displayed on the client’s side.
+
+* Write_file: It is used to write the contents into the file. The file is specified using the file descriptor as the argument. It also takes the text to be written and the number of bytes to be wriiten into the file as arguments.
+
+* List_files: It lists the name of all files in the user’s directory.
+
+* Delete_file: It deletes a file from the virtual disk. The function takes the name of the file to be deleted as an argument. A message is displayed on the client’s side after deleting the specified file.
+
+* Close_file: It is used to close a file. No operation can be performed on the file after it is closed. A message is displayed on the client’s side after the file is closed.
   
 
 ### Compile and Run
