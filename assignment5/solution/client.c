@@ -18,25 +18,31 @@
 CLIENT *clnt;
 
 void
-ssnfsprog_1(char *host)
-{
-clnt = clnt_create (host, SSNFSPROG, SSNFSVER, "udp");
+ssnfsprog_1(char *host) {
+	clnt = clnt_create (host, SSNFSPROG, SSNFSVER, "udp");
 	if (clnt == NULL) {
+		fprintf(stderr, "getting client handle failed"); 
 		clnt_pcreateerror (host);
 		exit (1);
 	}
 }
 
-int Open(char *filename_to_open){
-  open_output  *result_1;
-  open_input  open_file_1_arg;
-  strcpy(open_file_1_arg.user_name, (getpwuid(getuid()))->pw_name);
-  strcpy(open_file_1_arg.file_name,filename_to_open);
-  result_1 = open_file_1(&open_file_1_arg, clnt);
+int 
+Open(char *filename_to_open) {
+	
+	open_output  *result_1;
+	open_input  open_file_1_arg;
+  	
+	strcpy(open_file_1_arg.user_name, (getpwuid(getuid()))->pw_name);
+  	strcpy(open_file_1_arg.file_name,filename_to_open);
+  	
+	result_1 = open_file_1(&open_file_1_arg, clnt);
 	if (result_1 == (open_output *) NULL) {
 		clnt_perror (clnt, "call failed");
 	}
+	
 	printf (" File name is %s\n", (*result_1).out_msg.out_msg_val);
+	
 	return ( (*result_1).fd);
 }
 
