@@ -17,7 +17,7 @@
 
 2. The file server will use a Linux file as a virtual disk to store the files created by the clients. The server and client should be implemented as Sun RPC server and client. 
 
-3. For simplicity, we can think of the virtual disk as a sequence of blocks, each block containing 512 bytes. we also assume that the capacity of virtual disk is 16MB. Each user should be assigned by the server a home directory. Users do not have the ability to create subdirectories within their home directory.
+3. For simplicity, we can think of the virtual disk as a sequence of blocks, each block containing 512 bytes. We also assume that the capacity of virtual disk is 16MB. Each user should be assigned by the server a home directory. Users do not have the ability to create subdirectories within their home directory.
 
 ### Functions description:
 
