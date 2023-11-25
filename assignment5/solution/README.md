@@ -70,7 +70,7 @@ make
 
 ```sh
 
-./client
+./client <host-name>
 
 ```
  
