@@ -11,7 +11,7 @@
 
   
 
-### Concepts:
+### Project:
 
 1. Implement a Simple Stateful Network File Server (SSNFS) that supports remote file service model (just to make things easy, data caching is not supported). 
 
@@ -19,7 +19,7 @@
 
 3. For simplicity, we can think of the virtual disk as a sequence of blocks, each block containing 512 bytes. we also assume that the capacity of virtual disk is 16MB. Each user should be assigned by the server a home directory. Users do not have the ability to create subdirectories within their home directory.
 
-### System calls:
+### Functions description:
 
 * Open_file: Opens the file with the given name in the user’s directory and returns a file descriptor (a positive integer) to the client. The file descriptor is used in subsequent reads and writes.
 
@@ -59,25 +59,6 @@ cd assignment1/solution/
 make reset all
 
 ```
-
-4. Followinf executables will be created:
-	* load, print, query, change, clean
-* **load:**  Loads the student information from file to shared memory.
-* **print:**  Prints the current information available on shared memory.
-* **query:** Query a record in shared memory using command: `./query <studentID>`
-* **change:** Perform any modification in the student information.
-	* **Update:** Update an attribute in student info using command `./change 1 ABCD <studentID> <attributeNumber> <Change>`
-		* Update Name: `./change 1 ABCD <studentID> 1 <New Name>`
-		* Update Address: ` ./change 1 ABCD <studentID> 2 <New Address>`
-		* Update Telephone: ` ./change 1 ABCD <studentID> 3 <New Telephone>`
-	* **Delete:** Delete a student record. `./change 2 ABCD <studentID>`
-	* **Add:** Add a new student record. `./change 3 ABCD <9-digit-studentID> <Name> <Address> <Telephone>`. Pls note, for simplicity of implementation, I did not consider spaces. So *Name* and *Address* must be one word only. 
-* **clean:** Saves the current state of shared memory to a file and dumps the shared memory space and semaphores.
-
-4. Run each executable in order to view or modify the records
-
-5. Run `./clean` once all changes are made and wish to terminate the program.
-
   
 
 <!-- CONTACT -->
