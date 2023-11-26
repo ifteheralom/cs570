@@ -1,564 +1,973 @@
-#include <stdio.h> // For printf, etc.
+#include "ssnfs.h"
+
+#include <stdio.h>	 // For printf, etc.
+#include <stdlib.h>  //for atoi()
 #include <rpc/rpc.h> // For RPC facilities.
-#include <string.h> // For strcpy, strcmp, strdup, strlen, etc.
-#include "ssnfs.h" // Automatically generated rpc service header.
-#include <unistd.h> // Needed for access, etc.
-#include <fcntl.h> // Needed for ftruncate, etc.
-#include <errno.h> // Need for errno, strerror, etc.
+#include <string.h>  // For strcpy, strcmp, strdup, strlen, etc.
+#include <unistd.h>  // Needed for access, etc.
+#include <fcntl.h>   // Needed for ftruncate, etc.
+#include <errno.h>   // Need for errno, strerror, etc.
 
-#define MAX_FILES 100 // The maximum number of files in the filesystem.
-#define MAX_PAGES 64 // The maximum number of pages per file.
-#define BLOCK_SIZE 512 // Blocks are 512 bytes.
-#define PAGE_SIZE (BLOCK_SIZE*64) // Pages are 8 blocks.
 
-struct file_info { // Holds the file information.
-    char username[10]; // Username of the file's owner.
-    char filename[10]; // Name of the file.
-    int used; // Number of pages used.
-    int pages[MAX_PAGES]; // A list of the page numbers used by the file.
-}; // End of struct file_info.
+#define NUM_USERS 10
+#define MAX_FILES_PER_USER 10
+#define FILE_TABLE_SIZE 10 /* i.e the maximum number of files currently opened by all users. 
+							  If a file has been opened twice, it is counted as two open files */
 
-struct state_table
+/*struct for the filetable*/
+struct element_ 
 {
-  int fd;
-  int write_offset;
-  int read_offset;
-  char *filename1;
-} state[11];
-int counter=0;
-int store;
-int result;
-int j=0;
-int i;
-typedef struct file_info file_info; // Define as a type.
-
-// Initializes the virtual disk files if they do not all exist already.(from previouus code)
-int init_disk() {
-    if ((access("files.dat", F_OK) == 0) && (access("pages.dat", F_OK) == 0) && (access("disk.dat", F_OK) == 0)) {
-    } else {
-        ftruncate(creat("disk.dat", 0666), 1024*1024*16);
-        ftruncate(creat("pages.dat", 0666), 2560);
-        ftruncate(creat("files.dat", 0666), sizeof(file_info) * MAX_FILES);
-        printf("ftruncate ok\n");
-    }
-}
-
-// Obtain a free page for a file to use.  Returns page number.(from previouus code)
-
-int get_free_page() {
-    
-    int fd;
-    int i;
-    char flag;
-    fd = open("pages.dat", O_RDWR);
-    if (fd == -1)
-        printf("%s\n", strerror(errno));
-    read(fd, &flag, 1);
-    for (i = 0; flag; i++) {
-        if (read(fd, &flag, 1) == -1) {
-            printf("%s\n", strerror(errno));
-            break;
-        }
-    }
-    lseek(fd, -1, SEEK_CUR);
-    write(fd, "\xff", 1);
-    close(fd);
-    return i;
-}
-
-// Checks if a file exists.  Return 0 on false, 1 on true.(code modified)
-int file_exists(char *username, char *filename) {
-    int fd, exists,i;
-    file_info fi;
-    fd = open("files.dat", O_RDONLY);
-    for(i=0;i<counter;i++)
-    {
-      if(strcmp(state[i].filename1,filename)==0)
-     {
-      state[counter].fd=counter+1;
-      result=state[counter].fd;
-      state[counter].read_offset=0;
-      state[counter].write_offset=state[i].write_offset;
-      state[counter].filename1=(char *)malloc(sizeof(filename));
-      strcpy(state[counter].filename1,filename);
-      counter++;
-      return result;
-     }
-    }
-    for (exists = 0; read(fd, &fi, sizeof(fi)) > 0;) 
-    {
-       if ((strcmp(username,fi.username) == 0) && (strcmp(filename, fi.filename) == 0)) {
-            state[counter].fd=counter+1;
-            state[counter].filename1=(char *)malloc(sizeof(filename));
-            strcpy(state[counter].filename1,filename);
-            state[counter].read_offset=0;
-            state[counter].write_offset=0;
-            result=state[counter].fd;
-            //printf("%d is the counter value\n",counter);
-            counter++;
-            return result;
-        }
-    }
-    close(fd);
-    return exists;
-}
-
-// Get information on a file.  Takes the username, filename, and a pointer to a file_info struct.(from previouus code)
-
-void get_file_info(char *username, char *filename, file_info *fi) {
-    int fd, exists;
-    fd = open("files.dat", O_RDONLY);
-    for (exists = 0; read(fd, fi, sizeof(file_info)) > 0;) {
-        if ((strcmp(username, fi->username) == 0) && (strcmp(filename, fi->filename) == 0)) {
-            exists = 1;
-            break;
-        }
-    }
-    close(fd);
-}
-
-// Commit changes to a file_info struct.  Takes only a file_info struct pointer as input.(from previouus code)
-
-void change_file_info(file_info *fi) {
-    int fd, exists;
-    file_info block;
-    fd = open("files.dat", O_RDWR);
-    for (exists = 0; read(fd, &block, sizeof(file_info)) > 0;) {
-        if ((strcmp(fi->username, block.username) == 0) && (strcmp(fi->filename, block.filename) == 0)) {
-            exists = 1;
-            break;
-        }
-    }
-    if (exists) {
-        lseek(fd, -sizeof(file_info), SEEK_CUR);
-        printf("used %d\n", fi->used);
-        printf("write %zd\n", write(fd, fi, sizeof(file_info)));
-    }
-    close(fd);
-}
-
-// Inserts a new file_info struct into the file table.(from previouus code)
-
-int add_file(file_info fi) {
-    int fd,fd1;
-    int found;
-    file_info block;
-    // search for an empty block
-    fd = open("files.dat", O_RDWR);
-    //fd1=open(
-    for (found = 0; read(fd, &block, sizeof(block)) > 0;) 
-     {
-        
-        if (block.username[0] == 0) 
-        {
-            state[counter].fd=counter+1;
-            printf("%d is fd\n",state[counter].fd);
-            state[counter].filename1=fi.filename;
-            state[counter].read_offset=0;
-            state[counter].write_offset=0;
-            //printf("%d is the offset value\n",state[counter].offset);
-          //  strcpy(state[counter].state,"OPEN");
-        
-            counter++;
-            found = 1;
-            break;
-        }
-    }
-    // insert file
-    if (found) {
-        
-        lseek(fd, -sizeof(fi), SEEK_CUR);
-        printf("write %zd\n", write(fd, &fi, sizeof(fi)));
-    }
-    close(fd);
-    // return success
-    return state[counter].fd;
-}
-
-// Write a string with a list of files owned by a user to the buffer.
-// Buffer must be at least 512 bytes!(from previouus code)
-
-void file_list(char *username, char *buffer) {
-    memset(buffer, 0 , 512);
-    int fd;
-    file_info fi;
-    fd = open("files.dat", O_RDONLY);
-    while (read(fd, &fi, sizeof(fi)) > 0) {
-        if (strcmp(username, fi.username) == 0) {
-            strcat(buffer, " ");
-            strcat(buffer, fi.filename);
-        }
-    }
-    close(fd);
-}
-
-// Free a page with given page number by setting its entry in the page table to 0.(from previouus code)
-
-void free_page(int page_index) {
-    int fd;
-    fd = open("pages.dat", O_RDWR);
-    lseek(fd, page_index, SEEK_SET);
-    write(fd, "\x00", 1);
-    close(fd);
-}
-
-// Delete a file owned by a user with filename as its name.(from previouus code)
-
-int file_delete(char *username, char *filename) {
-    int fd;
-    int found, i;
-    file_info fi;
-    // search for file's file info block
-    fd = open("files.dat", O_RDWR);
-    for (found = 0; read(fd, &fi, sizeof(fi)) > 0;) {
-        if ((strcmp(username, fi.username) == 0) && (strcmp(filename, fi.filename) == 0)) {
-            found = 1;
-            break;
-        }
-    }
-    // delete file
-    if (found) {
-        // free disk pages
-        for (i = 0; i < fi.used; i++) {
-            free_page(fi.pages[i]);
-        }
-        lseek(fd, -sizeof(fi), SEEK_CUR);
-        memset(&fi, 0, sizeof(fi));
-        printf("write %zd\n", write(fd, &fi, sizeof(fi)));
-    }
-    close(fd);
-    // return success
-    return found;
-}
-
-// RPC call "create".(code modified)
-open_output * open_file_1_svc(open_input *inp, struct svc_req *rqstp) {
-    int fd, page;
-    file_info fi;
-    //char *file;
-    char message[512];
-    int desc;
-    printf("open_file_1_svc: (user_name = '%s', file_name = '%s')\n", inp->user_name, inp->file_name);
-    init_disk();
-    desc=file_exists(inp->user_name,inp->file_name);
-    
-    if(desc!=0)
-    {
-      static open_output out;
-       if(counter==10)
-       {
-        out.fd=-1;
-        return &out;
-       }
-       out.fd = desc;
-       return &out;
-      
-   }
-   // printf("file Descriptor is %d\n", state[i].fd);
-     else
-     {
-        static open_output out;
-        printf("THE COUNTER VALUE IS %d",counter);
-        if(counter==10)
-        {
-         out.fd=0;
-         return &out;
-        }
-        else
-        {
-        strcpy(fi.username, inp->user_name);
-        strcpy(fi.filename, inp->file_name);
-        fi.used = 1;
-        state[counter].fd=counter+1;
-        result=state[counter].fd;
-        state[counter].read_offset=0;
-        state[counter].write_offset=0;
-        //printf("%d\n",state[counter].offset);
-        state[counter].filename1=(char *)malloc(sizeof(fi.username));
-        strcpy(state[counter].filename1,inp->file_name);
-        //   strcpy(state[counter].username.fi.username);
-        counter++;
-        page = get_free_page();
-        if (page != -1)
-        {
-            printf("%d is the page number\n",page);
-            fi.pages[0] = page;
-        }
-        else
-            printf("no pages left");
-        desc=add_file(fi);
-        if (desc) {
-            snprintf(message, 512, "%s created for user %s", inp->file_name, inp->user_name);
-        } else {
-            strcpy(message, "Error: Max number of files reached.");
-        }
-      }
-    }
-    static open_output out;
-    out.fd = result;;
-    return &out;
-
-// RPC call "list".
-}
-list_output * list_files_1_svc(list_input *inp, struct svc_req *rqstp) 
+	char username[10]; 	  //user name. max of 9 char, the last is \0.
+    char filename[10];    //file name. max of 9 char, the last is \0
+    int current_position; //the position of a file pointer
+    int fd; 			  //file descripter
+	int bytesStart;		  //starting position of file
+	int bytesEnd;		  //ending position of file
+};
+struct file_table_ 
 {
-    char message[512];
-    char buffer[512];
+	int entries_in_use; //number of row in file table that are filled (with info)
+	struct element_ content[FILE_TABLE_SIZE];
+};
 
-    init_disk();
+typedef struct file_table_ file_table; //(struct file_table_) = file_table
 
-    printf("list_file_1_svc: (usrname = '%s')\n", inp->user_name);
-    file_list(inp->user_name, buffer);
-    printf("files: %s\n", buffer);
-    static list_output out;
-    snprintf(message, 512, "The files are:%s", buffer);
-    out.out_msg.out_msg_len = strlen(message) + 1;
-    out.out_msg.out_msg_val = strdup(message);
-    return &out;
+file_table FileTable = {.entries_in_use = 0}; //global file table.
+
+/*struct for storing space information of the virtual disk (so details may be changed by other programmers in future)*/
+struct disk_info
+{
+    char * filename;
+    unsigned int sizeofdisk;        //in bytes
+    unsigned int blocksperfile;
+    unsigned int sizeofablock;      //in bytes
+    unsigned int maxusers;
+    unsigned int bytesperfile;      //in bytes
+    unsigned int totalfilesindisk;
+    unsigned int filesperdirectory;
+    unsigned int bytestouse;        //in bytes
+    unsigned int bytesleftover;     //in bytes  
+};
+typedef struct disk_info disk_info;
+
+//global variable, with a few initializations
+disk_info theDisk = {.sizeofdisk = 10000000, .blocksperfile = 64, .sizeofablock = 512, .maxusers = 10};
+
+
+void set_diskinfo()
+{
+	theDisk.bytesperfile = theDisk.blocksperfile * theDisk.sizeofablock;
+    
+    float totalnumblocks = theDisk.sizeofdisk / theDisk.sizeofablock;
+    
+    theDisk.totalfilesindisk = totalnumblocks / theDisk.blocksperfile;
+    
+    theDisk.filesperdirectory = theDisk.totalfilesindisk / theDisk.maxusers;
+    
+    theDisk.bytestouse = theDisk.totalfilesindisk * theDisk.bytesperfile;
+    
+    theDisk.bytesleftover = theDisk.sizeofdisk - theDisk.bytestouse;
 }
 
-delete_output * delete_file_1_svc(delete_input *inp, struct svc_req *rqstp) {
-    char message[512];
+// Initializes the virtual disk file (if it does not exist already).
+int init_disk() 
+{   
+	//from sample code
 
-    init_disk();
+	//access(): determines accessibility of a file. Returns 0 if it can be accessed.
 
-    printf("delete_file_1_svc: (user_name = '%s', file_name = '%s')\n", inp->user_name, inp->file_name);
-    static delete_output out;
-    if (file_exists(inp->user_name, inp->file_name)) {
-        file_delete(inp->user_name, inp->file_name);
-        snprintf(message, 512, "%s deleted", inp->file_name);
-    } else {
-        // file doesn't exist
-        snprintf(message, 512, "Error: file %s does not exist.", inp->file_name);
+	if ( (access("disk.dat", F_OK) != 0) && (access("metadata.dat", F_OK) != 0) )  //if the virtual disk file does not exist
+	{   
+		set_diskinfo(); //set up disk info in theDisk struct.
+	
+		//creat(): creates a new file or rewrites an existing one
+		//ftruncate(): truncates a file to a specified length
+        ftruncate(creat("disk.dat", 0666), theDisk.sizeofdisk); //permission 0666 gives owner, group and world permission to read and write the file.
+		ftruncate(creat("metadata.dat", 0666), 1000); 		//1KB for metadata
     }
-    out.out_msg.out_msg_len = strlen(message) + 1;
-    out.out_msg.out_msg_val = strdup(message);
-    return &out;
 }
 
-//Code Modified
-write_output * write_file_1_svc(write_input *inp, struct svc_req *rqstp) {
-    char message[512];
-    char *buffer;
-    file_info fi;
-    int j,store,flag=0;
-    int fd, numbytes, offset, size, at, page_index, page_num, len;
-    init_disk();
-    printf("write_file_1_svc: (user_name = '%s', file_descriptor = '%d' numbytes = %d)\n",
-           inp->user_name, inp->fd, inp->numbytes);
-    printf("write buffer: %s\n", inp->buffer.buffer_val);
-    static write_output out;
-    for(j=0;j<counter;j++)
-    {
-     if(inp->fd==state[j].fd)
-     store=j;
-     flag=1;
+int create_file (open_input *inp) //returns 1 on success, 0 on failure
+{
+	char filename[10];
+	char username[10];
+	
+	strcpy (filename, inp->file_name);
+	strcpy (username, inp->user_name);
+	
+	//Must change only metadata.dat (to keep track of file placements for later read/write to disk.
+	
+	FILE * fp;
+	char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+	
+	int j = 0;
+	int k = 0;
+	int numfiles;
+	char* token; 
+	long wheretoappend; //position in which to append new file info
+	int file1[2]; //[start, end]
+	int file2[2]; //[start, end]
+	char* concatenation;
+	
+	//open metadata
+	fp = fopen("metadata.dat", "a+"); //open for reading and appending
+	
+	//go through lines to find username, then to file positions
+	while ((read = getline(&line, &len, fp)) != -1)//getline returns -1 on failure to read a line (including end-of-file condition).
+	{
+		//complete line
+		token = strtok(line, " "); //gets username in file
+		
+		if(strcmp(token, inp->user_name) == 0) //if they are equal / if username found in metadata
+		{
+			//check to see if user's directory has the maximum amount of files (theDisk.filesperdirectory is the max)
+			
+			//token will be number of files in user directory
+			numfiles = atoi(strtok(0, " "));
+			
+			if(numfiles == theDisk.filesperdirectory) //max number of files in directory
+			{
+				fclose(fp); //close file before leaving function
+				return 0;   //creation did NOT work because there is no space for it in the disk/user directory.
+			}
+			
+			//go through files to see if we can fit the new file in between (instead of end) (just in case files have been deleted before)
+			while(j < numfiles)
+			{
+				//check to see the bytes end of one file is consecutive to bytes start of the next file.
+				//files should be in ascending order of bytes.
+			
+				//token will be file name
+				token = strtok(0, " (");
+				
+				if(k == 0)
+				{
+					//token will be start byte
+					file1[0] = atoi(strtok(0, " ,")); //start
+					
+					//token will be end byte
+					file1[1] = atoi(strtok(0, " ,)"));	//end
+					
+					k = k + 1;
+				}
+				else
+				{   
+					//store position after last , and before filename
+					wheretoappend = ftell(fp); //there may be problem with this due to how strtok() works. may not change pointer pos.
+				
+					//token will be start byte
+					file2[0] = atoi(strtok(0, " ,")); //start
+					
+					//token will be end byte
+					file2[1] = atoi(strtok(0, " ,)"));	//end
+					
+					//now compare file1[1] (end) with file2[0] (start)
+					
+					if(file2[0] != (file1[1] + 1)) //if start of second file is NOT the same as end of first file + 1...
+					{
+						//Add new file name in between file1 and file2
+						
+						char buffer1[8];
+						char buffer2[8];
+						snprintf(buffer1, 8,"%d",(file1[1] + 1)); //itoa((file1[1] + 1),buffer1,8);
+						snprintf(buffer2, 8,"%d",(file1[1] + theDisk.bytesperfile)); //itoa((file1[1] + theDisk.bytesperfile),buffer1,8);
+						
+						concatenation = "";
+						
+						strcpy(concatenation, " ");
+						
+						strcat(concatenation, filename);
+						strcat(concatenation, "(");
+						strcat(concatenation, buffer1);//store start. use end of first file + 1
+						strcat(concatenation, " ,");
+						strcat(concatenation, buffer2);
+						strcat(concatenation, "), ");
+						
+						fwrite(concatenation , 1 , sizeof(concatenation) , fp); //file pointer already pointing at location we want
+						
+						//Done! No need to keep checking bytes of files, the file has been created!
+						
+						fclose(fp); //close file before leaving function
+						return 1; //successful creation of file
+					}
+					
+					//File2's start = file1's end, they are consecutive, so continue checking the rest of the file byte's starts/ends.
+					
+					k = 0;
+				}
+
+				j = j + 1;
+			}
+			
+			//We are outside of the file loop. All byte end/start pairs are consecutive. So, we must add the new file to the end.
+			
+			wheretoappend = ftell(fp);
+			
+			char buffer3[8];
+			char buffer4[8];
+			snprintf(buffer3, 8,"%d",(file2[1] + 1)); //itoa((file2[1] + 1),buffer3,8);
+			snprintf(buffer4, 8,"%d",(file2[1] + theDisk.bytesperfile)); //itoa((file2[1] + theDisk.bytesperfile),buffer4,8);
+			
+			concatenation = "";
+						
+			strcpy(concatenation, ", ");
+			
+			strcat(concatenation, filename);
+			strcat(concatenation, "(");
+			strcat(concatenation, buffer3);//use end of last seen file + 1. store start of new file.
+			strcat(concatenation, ",");
+			strcat(concatenation, buffer4); //store end of new file.
+			strcat(concatenation, ")");
+			
+			fwrite(concatenation , 1 , sizeof(concatenation) , fp); //file pointer already pointing at location we want
+			
+			fclose(fp); //close file before leaving function
+			return 1; 
+		}
     }
-    if(flag==0)
-   {
-     
-     snprintf(message, 512, "Cannot write to the file");
-     out.out_msg.out_msg_len = strlen(message) + 1;
-     out.out_msg.out_msg_val = strdup(message);
-        return &out;
-   }
- 
-    if (flag!=0) {
-        numbytes = inp->numbytes < strlen(inp->buffer.buffer_val) ? inp->numbytes : strlen(inp->buffer.buffer_val);
-        buffer = inp->buffer.buffer_val;
-        get_file_info(inp->user_name, state[store].filename1, &fi);
-        if (state[store].write_offset> (fi.used * PAGE_SIZE - 1)) {
-            printf("used = %d\n", fi.used);
-            snprintf(message, 512, "Error: writing past end of file.");
-        } else if ((state[store].write_offset + numbytes) > (PAGE_SIZE * MAX_PAGES)) {
-            snprintf(message, 512, "Error: write is too large.");
-        } else {
-            offset = state[store].write_offset;
-            at = 0;
-            while (at < numbytes) {
-                page_index = offset / PAGE_SIZE;
-                if (page_index == fi.used) {
-                    page_num = get_free_page();
-                    fi.pages[fi.used] = page_num;
-                    fi.used++;
-                    change_file_info(&fi);
-                } else {
-                    page_num = fi.pages[page_index];
-                }
-                if ((numbytes - at) < (PAGE_SIZE - (offset % PAGE_SIZE))) {
-                    len = numbytes - at;
-                } else {
-                    len = PAGE_SIZE - (offset % PAGE_SIZE);
-                }
-                fd = open("disk.dat", O_RDWR);
-                printf("lseek to %d\n", (PAGE_SIZE * page_num) + (offset % PAGE_SIZE));
-                printf("%d %d %d\n", PAGE_SIZE, page_num, offset%PAGE_SIZE);
-                lseek(fd, (PAGE_SIZE * page_num) + (offset % PAGE_SIZE), SEEK_SET);
-                write(fd, buffer+at, len);
-                close(fd);
-                at += len;
-                offset += len;
-            }
-            snprintf(message, 512, "%d characters written to file %s", numbytes, state[store].filename1);
-        }
-    } else {
-        // file doesn't exist
-        snprintf(message, 512, "Error: file %s does not exist.", state[store].filename1);
-    }
-    state[store].write_offset=state[store].write_offset + inp->numbytes;
-     printf("FD\tFileName\tRead Offset\tWrite Offset\n");
-    for(j=0;j<counter;j++)
-    {
-     printf("%d\t%s\t\t%d\t\t%d\t",state[j].fd,state[j].filename1,state[j].read_offset,state[j].write_offset);
-     printf("\n\n");
-    }
- 
-    out.out_msg.out_msg_len = strlen(message) + 1;
-    out.out_msg.out_msg_val = strdup(message);
-    return &out;
+	
+	//if out here, then something went wrong. It should have returned already.
+
+	fclose(fp); //close file before leaving function
+	return -1; //file not created, for unknown reason
 }
-//Code modified
-read_output * read_file_1_svc(read_input *inp, struct svc_req *rqstp) {
-    static read_output out;
-    char *message, *buffer;
-    int offset, numbytes, at, page_index, page_num, len, fd, buffer_size, message_size, read_fail;
-    file_info fi;
-    int i,store1,flag=0;
-    printf("entered the read function\n");
-    for(i=0;i<counter;i++)
-    {
-     if(state[i].fd==inp->fd)
-     {
-      store1=i;
-      flag=1;
-      break;
-     }
-    }
-   if(flag==0)
-   {
-     message = malloc(512);
-     snprintf(message, 512, "Cannot read from the file");
-     out.out_msg.out_msg_len = strlen(message) + 1;
-     out.out_msg.out_msg_val = strdup(message);
-        return &out;
-   }
-   
-    init_disk();
-    printf("read_file_1_svc: (user_name = '%s', fd= %d offset = %d numbytes = %d)\n",
-           inp->user_name, inp->fd, state[store1].read_offset, inp->numbytes);
-    //static read_output out;
 
-    if (flag!=0) {
-        offset = state[store1].read_offset;
-        numbytes = inp->numbytes;
-        at = 0;
-        buffer_size = numbytes + 1;
-        buffer = malloc(buffer_size);
-        memset(buffer, 0, buffer_size);
-        char *reply = "Content read: ";
-        message_size = strlen(reply) + buffer_size;
-        get_file_info(inp->user_name, state[store1].filename1, &fi);
-        read_fail = 0;
-        while (at < numbytes) {
-            printf("at = %d\n", at);
-            page_index = offset / PAGE_SIZE;
-            if (page_index >= fi.used) {
-                read_fail = 1;
-                break;
-            }
-            page_num = fi.pages[page_index];
-            if ((numbytes - at) < (PAGE_SIZE - (offset % PAGE_SIZE))) {
-                len = numbytes - at;
-            } else {
-                len = PAGE_SIZE - (offset % PAGE_SIZE);
-            }
-            fd = open("disk.dat", O_RDONLY);
-            lseek(fd, (PAGE_SIZE * page_num) + (offset % PAGE_SIZE), SEEK_SET);
-            printf("len = %d\n", len);
-            read(fd, buffer+at, len);
-            close(fd);
-            at += len;
-            offset += len;
-            printf("%s\n", buffer);
-            state[store1].read_offset=state[store1].read_offset+inp->numbytes;
-        }
-        buffer[numbytes] = '\x00';
-        if (read_fail) {
-            message = malloc(512);
-            snprintf(message, 512, "Error: writing past end of file.");
-            printf("%s\n", message);
-        } else {
-            message = malloc(message_size);
-            memset(message, 0, message_size);
-            snprintf(message, message_size, "Content read: %s", buffer);
-            printf("%s\n", message);
-        }
-    } else {
-        message = malloc(512);
-        snprintf(message, 512, "Cannot read from the file");
-        out.out_msg.out_msg_len = strlen(message) + 1;
-        out.out_msg.out_msg_val = strdup(message);
-        return &out;
-    }
-     printf("FD\tFileName\tRead Offset\tWrite Offset\n");
+int does_file_exist (open_input *inp) //yes = 1, no = 0
+{
+	char filename[10];
+	char username[10];
+	
+	strcpy (filename, inp->file_name);
+	strcpy (username, inp->user_name);
+	
+	FILE * fp;
+	char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+	
+	fp = fopen("metadata.dat", "r");
+	
+	char* token; 
+	
+	int j = 0;
+	int numfiles;
+	
+	//go through lines to find username, then to find file.
+	while ((read = getline(&line, &len, fp)) != -1)//getline returns -1 on failure to read a line (including end-of-file condition).
+	{
+		//complete line
+		token = strtok(line, " "); //gets username in file
+		
+		if(strcmp(token, inp->user_name) == 0) //if they are equal / if username found in metadata
+		{
+			//token will be number of files in user directory
+			numfiles = atoi(strtok(0, " "));
+			
+			if(numfiles == 0) //no files in user directory
+			{
+				fclose(fp); //close file before leaving function
+				return 0; //file does not exist because user directory has no files
+			}
+			
+			while(j < numfiles)
+			{
+				//token will be file name
+				token = strtok(0, " (");
+				
+				if(strcmp(token, inp->file_name) == 0) //found the filename in directory of user
+				{
+					fclose(fp); //close file before leaving function
+					return 1; //file does exist (true)
+				}
+				
+				//token will be start byte
+				token = strtok(0, " ,");
+				
+				//token will be end byte
+				token = strtok(0, " ,)");	
 
-    for(i=0;i<counter;i++)
-    {
-     
-     printf("%d\t%s\t\t%d\t\t%d\t",state[i].fd,state[i].filename1,state[i].read_offset,state[i].write_offset);
-     printf("\n\n");
+				j = j + 1;
+			}
+			
+			if(j == numfiles)
+			{
+				fclose(fp); //close file before leaving function
+				return 0; //checked all files and none matched, so file does not exist
+			}
+		}
     }
-
-    out.out_msg.out_msg_len = strlen(message) + 1;
-    out.out_msg.out_msg_val = strdup(message);
-   // free(buffer);
-   // free(message);
-    printf("%s (%d)\n", out.out_msg.out_msg_val, out.out_msg.out_msg_len);
-    return &out;
+	
+	//return 0 (=> file does NOT exist) because if it did exist then it would have returned a 1 already.
+	
+	fclose(fp); //close file before leaving function
+	
+	return 0; //file does not exist because metadata.dat is empty
+	
 }
-//removes the file entry from the state table
+
+open_output * open_file_1_svc(open_input *inp, struct svc_req *rqstp)
+{
+	static open_output  result;
+	int creation_out;
+	
+	char filename[10];
+	char username[10];
+	strcpy (filename, inp->file_name);
+	strcpy (username, inp->user_name);
+	FILE * fp;
+	char * line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	int j = 0;
+	char* token;
+	int file[2]; //[start, end]
+	int numfiles;
+	
+	int filedescriptor;
+
+	//make sure disk exists
+	init_disk();
+	
+	//if (file does not exist)
+	if(does_file_exist(inp) == 0) //if file does not exist
+	{
+		//create file
+		creation_out = create_file(inp);
+		
+		//if (no space on virtual disk for new file)
+		if(creation_out == 0) //no space in virtual disk / in user directory.
+		{
+			//print error and return -1
+			printf("\nFile could not be created. There is no space in the directory of %s.", inp->file_name);
+			result.fd = -1;
+			return &result;
+		}
+		else
+		{	
+			//if (creation failed)
+			if(creation_out == -1) //something went wrong
+			{
+				//print error and return -1
+				printf("\nError: Creation unsuccessful for unknown reasons.");
+				result.fd = -1;
+				return &result;
+			}
+		}
+	}
+		
+	//Check capacity of file table.
+	
+	//if (no space in file table)
+	if(FileTable.entries_in_use == 10) //the maximum files that can be open at a time is 10
+	{
+		//print "error"
+		printf("\nError: Could not open file. The file table is full. You must close at least one file to perform task.\n");
+		result.fd = -1;
+	}
+	else
+	{
+		//***
+		//figure out start bytes and end bytes of file from metadata
+		//***
+		
+		int found = 0;
+		
+		//open metadata
+		fp = fopen("metadata.dat", "a+"); //open for reading and appending
+		
+		//go through lines to find username, then to file positions
+		while (((read = getline(&line, &len, fp)) != -1) && (found == 0))//getline returns -1 on failure to read a line (including end-of-file condition).
+		{
+			//complete line
+			token = strtok(line, " "); //gets username in file
+			
+			if(strcmp(token, inp->user_name) == 0) //if they are equal / if username found in metadata
+			{
+				//check to see if user's directory has the maximum amount of files (theDisk.filesperdirectory is the max)
+				
+				//token will be number of files in user directory
+				numfiles = atoi(strtok(0, " "));
+				
+				while((j < numfiles) && (found == 0))
+				{
+					//token will be file name
+					token = strtok(0, " (");
+					
+					if(strcmp(filename, inp->file_name) == 0) //found the filename in directory of user
+					{
+						//token will be start byte
+						file[0] = atoi(strtok(0, " ,"));
+					
+						//token will be end byte
+						file[1] = atoi(strtok(0, " ,)"));	
+						
+						found = 1;
+					}
+
+					j = j + 1;
+				}
+			}
+		}
+		
+		fclose(fp);
+		
+		//***
+		//create a file descriptor
+		//***
+		
+		if(FileTable.entries_in_use == 0)
+		{
+			filedescriptor = 1;
+		}
+		else
+		{
+			//find biggest file descriptor. new descriptor will be an addition to it.
+		
+			int k;
+			int max = 0;
+			for(k = 0; k < FileTable.entries_in_use; k++)
+			{
+				if(FileTable.content[k].fd > max)
+				{
+					max = FileTable.content[k].fd; 
+				}
+			}
+			
+			filedescriptor = max + 1;
+		}
+		
+		//***
+		//add file into file table
+		//***
+		
+		//add to first unused entry of table
+		strcpy(FileTable.content[FileTable.entries_in_use].username, inp->user_name); 
+		strcpy(FileTable.content[FileTable.entries_in_use].filename, inp->file_name); 
+		FileTable.content[FileTable.entries_in_use].current_position = file[0]; //use start bytes of file
+		FileTable.content[FileTable.entries_in_use].fd = filedescriptor;
+		FileTable.content[FileTable.entries_in_use].bytesStart = file[0];
+		FileTable.content[FileTable.entries_in_use].bytesEnd = file[1];
+		
+		FileTable.entries_in_use = FileTable.entries_in_use + 1;
+		
+		//store file descriptor in output structure
+		result.fd = filedescriptor;
+		
+	}
+	
+	//return output structure
+	return &result; //may either be -1 from error or the file descriptor
+}
+
+read_output * read_file_1_svc(read_input *inp, struct svc_req *rqstp)
+{
+	/*Files are read only sequentially from the beginning to the end.  Random access is not supported.*/
+
+	static read_output  result;
+
+	init_disk();
+	
+	char username[10];
+	int filedescriptor;
+	int numbytes;
+
+	int current_pos;
+	int startbytes;
+	int endbytes;
+	
+	strcpy (username, inp->user_name);
+	filedescriptor = inp->fd;
+	numbytes = inp->numbytes;
+
+	//Check if the file requested is open in the file table and, if it is, store file table data into local variables
+	
+	int found = 0;
+	int k;
+	int index;
+	for(k = 0; ((k < FileTable.entries_in_use) && found == 0); k++)
+	{
+		if(FileTable.content[k].fd == filedescriptor)
+		{
+			found = 1;
+			index = k;
+			
+			current_pos = FileTable.content[k].current_position;
+			startbytes = FileTable.content[k].bytesStart;
+			endbytes = FileTable.content[k].bytesEnd;
+		}
+	}
+
+	//if (file not open)
+	if(found == 0)
+	{
+		//output error and exit function
+			
+		printf("Error: File not open. Can't read file that is not open.");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: File not open. Can't read file that is not open.") + 1;
+		result.out_msg.out_msg_val = strdup("Error: File not open. Can't read file that is not open.");
+		
+		//exit the function
+		return &result;
+	}
+	
+	//file is open!
+	
+	//check if user is trying to read past end of file
+	
+	if((numbytes + current_pos) > endbytes)
+	{
+		//output error and exit function
+			
+		printf("Error: Can't read past end of file.");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: Can't read past end of file.") + 1;
+		result.out_msg.out_msg_val = strdup("Error: Can't read past end of file.");
+		
+		//exit the function
+		return &result;
+	}
+	
+	//declare buffer variable for reading
+	
+	char *buffer; //to store what is read
+	
+	//open disk.dat
+	
+	FILE * fp;	
+	fp = fopen("disk.dat", "r");
+	
+	//go to current_pos in disk file
+	
+	fseek(fp, current_pos, SEEK_SET);
+	
+	//Read from file starting at 'current position' using fread() and store in a buffer
+	
+	fread(buffer, numbytes, 1, fp);
+		
+	//close file
+	fclose(fp);	
+		
+	//store output msg into structure
+	result.out_msg.out_msg_len = strlen(buffer) + 1;
+	result.out_msg.out_msg_val = strdup(buffer);
+	
+	//return output structure
+	return &result;
+}
+
+write_output * write_file_1_svc(write_input *inp, struct svc_req *rqstp)
+{
+	/*Files are written only sequentially from the beginning to the end.  Random access is not supported.*/
+
+	static write_output  result;
+	
+	init_disk();
+	
+	char username[10];
+	int filedescriptor;
+	int numbytes;
+	char *buffer;
+
+	int current_pos;
+	int startbytes;
+	int endbytes;
+	
+	strcpy (username, inp->user_name);
+	filedescriptor = inp->fd;
+	numbytes = inp->numbytes;
+	strcpy(buffer, inp->buffer.buffer_val);
+
+	//Check if the file requested is open in the file table and, if it is, store file table data into local variables
+	
+	int found = 0;
+	int k;
+	int index;
+	for(k = 0; ((k < FileTable.entries_in_use) && found == 0); k++)
+	{
+		if(FileTable.content[k].fd == filedescriptor)
+		{
+			found = 1;
+			index = k;
+			
+			current_pos = FileTable.content[k].current_position;
+			startbytes = FileTable.content[k].bytesStart;
+			endbytes = FileTable.content[k].bytesEnd;
+		}
+	}
+
+	//if (file not open)
+	if(found == 0)
+	{
+		//output error and exit function
+			
+		printf("Error: File not open. Can't write into file that is not open.");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: File not open. Can't write into file that is not open.") + 1;
+		result.out_msg.out_msg_val = strdup("Error: File not open. Can't write into file that is not open.");
+		
+		//exit the function
+		return &result;
+	}
+	
+	//file is open!
+	
+	//check if user is trying to write past end of file
+	
+	if((numbytes + current_pos) > endbytes)
+	{
+		//output error and exit function
+			
+		printf("Error: Can't write past end of file.");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: Can't write past end of file.") + 1;
+		result.out_msg.out_msg_val = strdup("Error: Can't write past end of file.");
+		
+		//exit the function
+		return &result;
+	}
+	
+	//open disk.dat
+	
+	FILE * fp;	
+	fp = fopen("disk.dat", "r");
+	
+	//go to current_pos in disk file
+	
+	fseek(fp, current_pos, SEEK_SET);
+	
+	//Write into file starting at 'current position' using fwrite()
+	
+	fwrite(buffer, numbytes, 1, fp); //write contents of buffer which have a total size of numbytes
+	
+	//close file
+	fclose(fp);
+		
+	//store output msg into structure
+	result.out_msg.out_msg_len = strlen(buffer) + 1;
+	result.out_msg.out_msg_val = strdup(buffer);
+
+	//return output structure
+	return &result;
+}
+
+list_output * list_files_1_svc(list_input *inp, struct svc_req *rqstp)
+{
+	static list_output  result;
+	
+	init_disk();
+
+	//Read metadata in virtual disk.
+	//Store list of file names into output structure (acquired from loop), it'll be a concatenated string.
+	
+	char username[10];
+	strcpy (username, inp->user_name); //current user
+
+	FILE * fp;
+	char * line = NULL;
+	size_t len = 0;		
+	ssize_t read;		
+		
+	fp = fopen("metadata.dat", "r");
+				
+	char* token; 
+	char* the_list;
+			
+	int j = 0;	
+	int numfiles;
+	int done = 0; //0 if not done, 1 if done
+	
+	//go through lines to find username, then to find file.
+	while (((read = getline(&line, &len, fp)) != -1) && (done == 1))//getline returns -1 on failure to read a line (including end-of-file condition).
+	{
+		//complete line
+		token = strtok(line, " "); //gets username in file
+		
+		if(strcmp(token, inp->user_name) == 0) //if they are equal / if username found in metadata
+		{
+			//token will be number of files in user directory
+			numfiles = atoi(strtok(0, " "));
+
+			while(j < numfiles)
+			{
+				//token will be file name
+				token = strtok(0, " (");
+				
+				//add filename to the_list
+				
+				strcat(the_list, token);
+				
+				if(j != numfiles - 1) //not last file
+				{
+					strcat(the_list, ", ");
+				}
+				
+				//token will be start byte. skip it!
+				token = strtok(0, " ,");
+				
+				//token will be end byte. skip it!
+				token = strtok(0, " ,)");	
+
+				j = j + 1;
+			}
+			
+			done = 1;
+		}
+    }
+
+	fclose(fp); //close file
+	
+	result.out_msg.out_msg_len = strlen(the_list) + 1;
+	result.out_msg.out_msg_val = strdup(the_list);
+	
+	//return output structure
+	return &result;
+}
+
+delete_output * delete_file_1_svc(delete_input *inp, struct svc_req *rqstp)
+{
+	static delete_output  result;
+	open_input inp2; //for does_file_exist() input
+	
+	char filename[10];
+	char username[10];
+	int index;
+	
+	strcpy (filename, inp->file_name);
+	strcpy (username, inp->user_name);
+	
+	strcpy (filename, inp2.file_name);
+	strcpy (username, inp2.user_name);
+	
+	init_disk();
+
+	//check if filename is in file table.
+	int found = 0;
+	int k;
+	for(k = 0; ((k < FileTable.entries_in_use) && found == 0); k++)
+	{
+		if(strcmp(FileTable.content[k].filename, filename) == 0)
+		{
+			found = 1;
+			index = k;
+		}
+	}
+	
+	//if (file is in file table)
+	if(found == 1)
+	{
+		//output error and exit function
+			
+		printf("Error: The file you are trying to delete is open. Close file first by using Close().");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: The file you are trying to delete is open. Close file first by using Close().") + 1;
+		result.out_msg.out_msg_val = strdup("Error: The file you are trying to delete is open. Close file first by using Close().");
+		
+		//exit the function
+		return &result;
+	}
+	else
+	{
+		//check if the file exists by calling does_file_exist()
+		if(does_file_exist(&inp2) == 0) //if file does not exist
+		{
+			//output error and exit function
+			
+			printf("Error: File does not exist. Can't delete an non-existent file.");
+			
+			//store output msg into structure
+			result.out_msg.out_msg_len = strlen("Error: File does not exist. Can't delete an non-existent file.") + 1;
+			result.out_msg.out_msg_val = strdup("Error: File does not exist. Can't delete an non-existent file.");
+			
+			//exit the function
+			return &result;
+		}
+	}
+	
+	//File exists.
+	
+	//Remove the file info from the metadata.
+		
+	char *buffer;
+	char *ptr;
+	
+	buffer = (char *)malloc(1000*sizeof(char));
+	memset(buffer,0,1000*sizeof(char));
+	ptr = buffer;
+	
+	FILE * fp;
+	char * line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	
+	char* token;
+	int numfiles;
+	int j = 0;
+	
+	fp = fopen("metadata.dat", "r");
+	
+	//go through lines to find username, then to file positions
+	while (((read = getline(&line, &len, fp)) != -1))//getline returns -1 on failure to read a line (including end-of-file condition).
+	{
+		//complete line
+		token = strtok(line, " "); //gets username in file
+		
+		if(strcmp(token, inp->user_name) == 0) //if they are equal / if username found in metadata
+		{
+			//put username in buffer
+			strcpy(ptr, token);
+			ptr = ptr + strlen(token); 
+			
+			//put numfiles in buffer
+			token = strtok(0, " ");
+			strcpy(ptr, token);
+			ptr = ptr + strlen(token); 
+			
+			numfiles = atoi(token);
+			
+			while(j < numfiles)
+			{
+				//token will be file name
+				token = strtok(0, " (");
+				
+				if(strcmp(filename, inp->file_name) == 0) //found the filename we want to delete
+				{
+					//don't add filename nor file info to buffer
+					
+					//skip start byte
+					token = strtok(0, " ,");
+				
+					//skip end byte
+					token = strtok(0, " ,)");
+				}
+				else
+				{
+					//put info in buffer
+					
+					//filename
+					strcpy(ptr, token);
+					ptr = ptr + strlen(token);
+
+					//start byte
+					token = strtok(0, " ,");
+					strcpy(ptr, token);
+					ptr = ptr + strlen(token);
+				
+					//end byte
+					token = strtok(0, " ,)");
+					strcpy(ptr, token);
+					ptr = ptr + strlen(token);
+					
+				}
+
+				j = j + 1;
+			}
+		}
+		else
+		{
+			//put line in buffer
+			strcpy(ptr, line);
+			ptr = ptr + strlen(line); 
+		}
+	}
+	
+	fclose(fp);
+	
+	//overwrite metadata.dat with the data put into buffer
+	
+	fp = fopen("metadata.dat", "w"); //overwrites file
+	fprintf(fp, "%s", buffer);
+	fclose(fp);
+			
+	//Remove the file content from the disk (that is within the blocks/bytes allocated for the file).
+	
+	//Store output msg into structure
+	result.out_msg.out_msg_len = strlen("Successful deletion.") + 1;
+	result.out_msg.out_msg_val = strdup("Successful deletion.");
+	
+	//Return structure.
+	return &result;
+}
+
 close_output * close_file_1_svc(close_input *inp, struct svc_req *rqstp)
 {
- static close_output out;
- char *message;
- char *buffer;
- int store;
- for(i=0;i<counter;i++)
- {
-  if(inp->fd==state[i].fd)
-  {
-   store=i;
-   break;
-  }
- }
- if(counter=1)
- counter=0;
- else
- {
- for(i=store;i<counter-1;i++)
- {
-  state[i].fd=state[i+1].fd;
-  strcpy(state[i].filename1,state[i+1].filename1);
-  state[i].read_offset=state[i+1].read_offset;
-  state[i].write_offset=state[i].write_offset;
- }
- counter--;
- }
- printf("File Descriptor\tFile name\tRead_offset\tWrite_offset\n");
- for(i=0;i<counter;i++)
- {
-   printf("%d\t%s\t\t%d\t\t%d\t\n\n",state[i].fd,state[i].filename1,state[i].read_offset,state[i].write_offset);
- }
- message = malloc(512);
- snprintf(message, 512, "Closed the file with the file descriptor %d",inp->fd);
- out.out_msg.out_msg_len = strlen(message) + 1;
- out.out_msg.out_msg_val = strdup(message);
- //free(buffer);
- //free(message);
- printf("%s (%d)\n", out.out_msg.out_msg_val, out.out_msg.out_msg_len);
- return &out;
-}
+	static close_output  result;
+	
+	int filedescriptor;
+	filedescriptor = inp->fd;
+	
+	init_disk();
 
+	//Look up filename in file table
+	
+	int found = 0;
+	int k;
+	int index;
+	for(k = 0; ((k < FileTable.entries_in_use) && found == 0); k++)
+	{
+		if(FileTable.content[k].fd == filedescriptor)
+		{
+			found = 1;
+			index = k;
+		}
+	}
+	
+	//if (filename not found)
+	if(found == 0)
+	{
+		//output error and exit function
+			
+		printf("Error: File was not found in file table. Can't close a non-opened file.");
+		
+		//store output msg into structure
+		result.out_msg.out_msg_len = strlen("Error: File was not found in file table. Can't close a non-opened file.") + 1;
+		result.out_msg.out_msg_val = strdup("Error: File was not found in file table. Can't close a non-opened file.");
+		
+		//exit the function
+		return &result;
+	}
+	
+	//file is in the table
+	
+	//remove entry/file from file table
+	
+	int i;
+	int j;
+	int l = FileTable.entries_in_use;
+	
+	for(i = 0; i < l; i++)
+	{
+		if(FileTable.content[i].fd == filedescriptor)
+		{
+			for(j = i; j < l; j++)
+			{
+				//shift up elements
+				strcpy(FileTable.content[j].username, FileTable.content[j+1].username);
+				strcpy(FileTable.content[j].filename, FileTable.content[j+1].filename);
+				FileTable.content[j].current_position =FileTable.content[j+1].current_position;
+				FileTable.content[j].fd = FileTable.content[j+1].fd;
+				FileTable.content[j].bytesStart = FileTable.content[j+1].bytesStart;
+				FileTable.content[j].bytesEnd = FileTable.content[j+1].bytesEnd;
+			}
+			
+			l--;    //Decreasing the length of the array
+			i--;    //check again from same index i
+		}
+	}
+	
+	//store output msg into structure
+	result.out_msg.out_msg_len = strlen("Success!") + 1;
+	result.out_msg.out_msg_val = strdup("Success!");
+
+	return &result;
+}
  
 seek_output *
 seek_position_1_svc(seek_input *argp, struct svc_req *rqstp)
