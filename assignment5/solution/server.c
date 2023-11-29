@@ -766,7 +766,5 @@ seek_output *
 seek_position_1_svc(seek_input *argp, struct svc_req *rqstp)
 {
 	static seek_output  result;
-
-
 	return &result;
 }
