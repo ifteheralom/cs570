@@ -123,9 +123,9 @@ int main (int argc, char **argv)
       	username = getpwuid(geteuid())->pw_name; // Get the user's username.
 	
 	fd1=Open("File1"); // opens the file
-	printf("\n file descriptor we received is : %d",fd1);
+	printf("\nFile descriptor we received is : %d",fd1);
 	fd2=Open("File2");
-	printf("\n file descriptor received is : %d",fd2);
+	printf("\nFile descriptor received is : %d",fd2);
 
 	for (i=0; i<20;i++){
 		Write(fd1, "This is a test program for cs570 assignment 5", 45);
